@@ -12,6 +12,7 @@
     "test": "node --test tests/*.test.js",
     "test:browser": "node tests/browser.mjs",
     "test:admin-browser": "node tests/admin-browser.mjs",
+    "test:arcade-browser": "node tests/arcade-browser.mjs",
     "format": "prettier --write src server shared tests index.html vite.config.ts README.md"
   },
   "dependencies": {

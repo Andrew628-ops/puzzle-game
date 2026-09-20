@@ -1,6 +1,6 @@
 # PuzzleMind
 
-A responsive puzzle gaming platform with a custom dark arcade interface, a fully playable sliding number puzzle, real accounts, saved progress, daily challenges, and achievements.
+A responsive puzzle gaming platform with a custom dark arcade interface, six playable games, real accounts, saved progress, daily challenges, and achievements.
 
 ## Run locally
 
@@ -35,7 +35,8 @@ Then rerun your npm command. This runtime lives in `/tmp`; install Node normally
 - Global score, daily score, fastest time, fewest moves, and highest level leaderboard categories. Only real registered players appear.
 - Guest play with browser-persisted history. Guest progress and registered account progress are separate; guest results do not enter leaderboards.
 - Optional synthesized sound effects and ambient audio, animation preferences, light/dark mode, a default difficulty, and level-unlocked tile themes.
-- Extensible game cards for Memory Match, Sudoku, Pattern Puzzle, Word Puzzle, and Picture Puzzle, clearly marked Coming Soon.
+- Memory Match with 6–12 pairs, uniquely solvable 9×9 Sudoku, number sequence challenges, clue-based word scrambles, and a sliding Picture Puzzle with a landscape reference. All six games offer four difficulties, pause/restart controls, score validation, XP, achievements, and saved results.
+- Game-specific URLs (`#play?game=memory`, `sudoku`, `pattern`, `word`, or `picture`) and personal bests. Existing accounts and history are preserved; the five newly implemented games become available automatically on the next server start.
 - An administrator studio for player search, suspension/restoration, statistics, real leaderboard data, future daily-puzzle scheduling with solvable previews, custom achievements, game catalog listings, report moderation, and draft/published announcements.
 - A player Help & feedback page with private reports, status tracking, and visible administrator replies. Published announcements appear on the overview and in notifications.
 
@@ -74,9 +75,12 @@ server/
   catalog.js        Stored daily puzzles and custom achievement evaluation
 shared/
   game.js           Deterministic generator, moves, scoring, XP, achievements
+  arcade.js         Memory, Sudoku, pattern, and word generators and replay validation
   catalog.js        Game engine registry, default cards, and badge requirements
 tests/
   game.test.js      Puzzle, score, progression, and streak invariants
+  arcade.test.js    Additional game rules, unique Sudoku solutions, API results, migrations
+  arcade-browser.mjs All six games, saved progress, controls, retries, and mobile layouts
   api.test.js       Isolated database integration tests
   browser.mjs       Chrome end-to-end checks and responsive screenshots
   admin.test.js     Permission, suspension, moderation, scheduling, migration tests
@@ -90,9 +94,10 @@ npm test
 npm run build
 npm run test:browser
 npm run test:admin-browser
+npm run test:arcade-browser
 ```
 
-The original game browser suite expects the development server to be running. The admin browser suite requires a fresh `npm run build` and starts its own production server with an isolated database. Both use Chrome at `/opt/google/chrome/chrome`; set `CHROME_PATH` to use another installation. Screenshots go to the ignored `test-results/` directory. API and admin browser fixtures remove their temporary databases afterward.
+The original game browser suite expects the development server to be running. The admin and arcade browser suites require a fresh `npm run build` and start their own production servers with isolated databases. All browser suites use Chrome at `/opt/google/chrome/chrome`; set `CHROME_PATH` to use another installation. Screenshots go to the ignored `test-results/` directory. API and isolated browser fixtures remove their temporary databases afterward.
 
 ## Production
 
@@ -146,4 +151,4 @@ Passwords use salted scrypt hashes. Session and reset tokens are cryptographical
 
 ## Next phases
 
-The first game, player/progression systems, administrator studio, and community moderation are implemented. Additional playable game modes, multiplayer races, friends, and picture uploads remain future work. New catalog entries are clearly marked Coming Soon. The current implementation uses local SQLite rather than the brief’s suggested PostgreSQL, so it runs without an external database service.
+The six game modes, player/progression systems, administrator studio, and community moderation are implemented. Multiplayer races, friends, and custom picture uploads remain future work. New catalog entries without an implemented engine are marked Coming Soon. The current implementation uses local SQLite rather than the brief’s suggested PostgreSQL, so it runs without an external database service.

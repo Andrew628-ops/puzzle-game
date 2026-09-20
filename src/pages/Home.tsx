@@ -56,7 +56,7 @@ export function GameCard({ game }: { game: GameDefinition }) {
               <button
                 className="round-button"
                 aria-label={`Play ${game.name}`}
-                onClick={() => navigate('play')}
+                onClick={() => navigate('play', game.id)}
               >
                 <ArrowUpRight size={19} />
               </button>
@@ -385,13 +385,13 @@ export function Games() {
       )}
       <div className="library-note">
         <Sparkles size={19} />
-        <p>Good things take a little puzzling. More games are on their way.</p>
+        <p>Find your favorite way to train your brain. Every completed game earns XP.</p>
       </div>
     </>
   );
 }
 export function Dashboard() {
-  const { player, navigate, history, achievements, level, xp, setAuth } = useApp();
+  const { player, navigate, history, achievements, level, xp, setAuth, catalog } = useApp();
   return (
     <>
       <div className="page-intro">
@@ -458,7 +458,10 @@ export function Dashboard() {
                       <span className="table-game-icon">
                         <Puzzle size={17} />
                       </span>
-                      {g.daily ? 'Daily challenge' : 'Sliding Puzzle'}
+                      {g.daily
+                        ? 'Daily challenge'
+                        : catalog.find((game) => game.id === (g.game || 'sliding'))?.name ||
+                          'Puzzle'}
                     </td>
                     <td>
                       <span className={`difficulty-label ${g.difficulty}`}>{g.difficulty}</span>

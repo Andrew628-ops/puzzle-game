@@ -1,5 +1,5 @@
 // A catalog entry becomes playable only after an engine is registered here.
-export const GAME_ENGINES = ['sliding'];
+export const GAME_ENGINES = ['sliding', 'memory', 'sudoku', 'pattern', 'word', 'picture'];
 export const GAME_CATALOG = [
   {
     id: 'sliding',
@@ -15,7 +15,7 @@ export const GAME_CATALOG = [
     description: 'Stay sharp. Find your perfect match.',
     tag: 'MEMORY',
     color: 'purple',
-    available: false,
+    available: true,
   },
   {
     id: 'sudoku',
@@ -23,7 +23,7 @@ export const GAME_CATALOG = [
     description: 'Find your flow, one number at a time.',
     tag: 'NUMBERS',
     color: 'orange',
-    available: false,
+    available: true,
   },
   {
     id: 'pattern',
@@ -31,7 +31,7 @@ export const GAME_CATALOG = [
     description: 'Spot the rhythm. Crack the pattern.',
     tag: 'PATTERNS',
     color: 'blue',
-    available: false,
+    available: true,
   },
   {
     id: 'word',
@@ -39,7 +39,7 @@ export const GAME_CATALOG = [
     description: 'Give your vocabulary a little workout.',
     tag: 'WORDS',
     color: 'pink',
-    available: false,
+    available: true,
   },
   {
     id: 'picture',
@@ -47,7 +47,7 @@ export const GAME_CATALOG = [
     description: 'Put a whole new perspective together.',
     tag: 'VISUAL',
     color: 'teal',
-    available: false,
+    available: true,
   },
 ];
 export const ACHIEVEMENT_METRICS = [

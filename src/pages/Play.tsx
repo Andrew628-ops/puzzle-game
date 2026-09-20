@@ -100,8 +100,16 @@ function DailyStanding() {
     </div>
   );
 }
-export function PlayPage({ daily = false }: { daily?: boolean }) {
-  const { preferences, history, navigate, record, setToast, player, setAuth } = useApp();
+export function PlayPage({
+  daily = false,
+  game = 'sliding',
+}: {
+  daily?: boolean;
+  game?: 'sliding' | 'picture';
+}) {
+  const { preferences, history, navigate, record, setToast, player, setAuth, catalog } = useApp();
+  const picture = game === 'picture';
+  const gameName = catalog.find((item) => item.id === game)?.name || 'Sliding Puzzle';
   const [difficulty, setDifficulty] = useState<Difficulty>(
       daily ? 'medium' : preferences.difficulty,
     ),
@@ -140,7 +148,7 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
       try {
         const data = await api<Session>('/games/session', {
           method: 'POST',
-          body: JSON.stringify({ difficulty: next, daily }),
+          body: JSON.stringify({ difficulty: next, daily, game }),
         });
         if (id !== request.current) return;
         setSession(data);
@@ -153,7 +161,7 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
         if (id === request.current) setLoading(false);
       }
     },
-    [daily, difficulty],
+    [daily, difficulty, game],
   );
   useEffect(() => {
     void newGame();
@@ -272,7 +280,7 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
       hintTimer.current = setTimeout(() => setHighlight(0), 4000);
     }
   }
-  const best = history.filter((g) => g.difficulty === difficulty),
+  const best = history.filter((g) => g.difficulty === difficulty && (g.game || 'sliding') === game),
     bestScore = best.length ? Math.max(...best.map((g) => g.score)) : 0;
   const dailyDone = daily && history.some((g) => g.daily === today());
   return (
@@ -280,7 +288,7 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
       <div className="game-breadcrumb">
         <button onClick={() => navigate('games')}>All games</button>
         <ChevronRight size={14} />
-        <span>{daily ? 'Daily challenge' : 'Sliding Puzzle'}</span>
+        <span>{daily ? 'Daily challenge' : gameName}</span>
       </div>
       <div className="page-intro play-intro">
         <div>
@@ -296,11 +304,19 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
               </>
             )}
           </div>
-          <h1>{daily ? 'A fresh challenge awaits.' : 'Everything in its right place.'}</h1>
+          <h1>
+            {daily
+              ? 'A fresh challenge awaits.'
+              : picture
+                ? 'A little piece of the bigger picture.'
+                : 'Everything in its right place.'}
+          </h1>
           <p>
             {daily
               ? 'One puzzle for everyone. How will you find your way?'
-              : 'Slide, think, and let the pieces fall into place.'}
+              : picture
+                ? 'Rebuild a quiet mountain escape, one tile at a time.'
+                : 'Slide, think, and let the pieces fall into place.'}
           </p>
         </div>
         <button
@@ -328,7 +344,7 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
               <Target size={21} />
             </span>
             <div>
-              <h2>{daily ? 'Today’s Sliding Puzzle' : 'Sliding Puzzle'}</h2>
+              <h2>{daily ? 'Today’s Sliding Puzzle' : gameName}</h2>
               <span>
                 {config.size} × {config.size} board · Find your flow
               </span>
@@ -383,9 +399,12 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
           </div>
           <div className="board-wrap">
             <div
-              className={`puzzle-board ${paused ? 'is-paused' : ''}`}
-              style={{ gridTemplateColumns: `repeat(${config.size},1fr)` }}
-              aria-label={`${config.size} by ${config.size} sliding puzzle`}
+              className={`puzzle-board ${picture ? 'picture-board' : ''} ${paused ? 'is-paused' : ''}`}
+              style={{
+                gridTemplateColumns: `repeat(${config.size},1fr)`,
+                gridTemplateRows: `repeat(${config.size},1fr)`,
+              }}
+              aria-label={`${config.size} by ${config.size} ${picture ? 'picture' : 'sliding'} puzzle`}
               role="group"
             >
               {board.map((tile, index) =>
@@ -394,10 +413,18 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
                     key={tile}
                     onClick={() => move(tile)}
                     disabled={paused || loading || !!result || saving}
-                    className={`puzzle-tile ${adjacent(board.indexOf(0), config.size).includes(index) ? 'movable' : ''} ${tile === index + 1 ? 'correct' : ''} ${highlight === tile ? 'hinted' : ''}`}
+                    className={`puzzle-tile ${picture ? 'picture-tile' : ''} ${adjacent(board.indexOf(0), config.size).includes(index) ? 'movable' : ''} ${tile === index + 1 ? 'correct' : ''} ${highlight === tile ? 'hinted' : ''}`}
+                    style={
+                      picture
+                        ? {
+                            backgroundSize: `${config.size * 100}% ${config.size * 100}%`,
+                            backgroundPosition: `${(((tile - 1) % config.size) * 100) / (config.size - 1)}% ${(Math.floor((tile - 1) / config.size) * 100) / (config.size - 1)}%`,
+                          }
+                        : undefined
+                    }
                     aria-label={`Move tile ${tile}`}
                   >
-                    {tile}
+                    {picture ? <span>{tile}</span> : tile}
                   </button>
                 ) : (
                   <div key="blank" className="blank-tile" aria-label="Empty space">
@@ -537,17 +564,28 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
                 <span>01</span>Move a tile into the empty space.
               </li>
               <li>
-                <span>02</span>Arrange the numbers from left to right.
+                <span>02</span>
+                {picture
+                  ? 'Rebuild the landscape using the reference picture.'
+                  : 'Arrange the numbers from left to right.'}
               </li>
               <li>
                 <span>03</span>Leave the empty space at the bottom right.
               </li>
             </ol>
-            <div className="goal-preview">
-              {Array.from({ length: 9 }, (_, i) => (
-                <span key={i}>{i < 8 ? i + 1 : '✳'}</span>
-              ))}
-            </div>
+            {picture ? (
+              <img
+                className="picture-reference"
+                src="/picture-landscape.svg"
+                alt="Reference: a mountain lake at sunset with trees and a sailboat"
+              />
+            ) : (
+              <div className="goal-preview">
+                {Array.from({ length: 9 }, (_, i) => (
+                  <span key={i}>{i < 8 ? i + 1 : '✳'}</span>
+                ))}
+              </div>
+            )}
             <p>
               Start with a corner. Build a row.
               <br />
@@ -580,9 +618,9 @@ export function PlayPage({ daily = false }: { daily?: boolean }) {
           </span>
           <h2>Little moves. Big possibilities.</h2>
           <p>
-            Click a numbered tile directly beside the empty space to slide it. Arrange all numbers
-            in order, left to right and top to bottom, with the empty space in the bottom-right
-            corner.
+            {picture
+              ? 'Slide a picture tile beside the empty space to move it. Rebuild the landscape shown in the reference picture. Small numbers help you find each tile’s position. Leave the empty space in the bottom-right corner.'
+              : 'Click a numbered tile directly beside the empty space to slide it. Arrange all numbers in order, left to right and top to bottom, with the empty space in the bottom-right corner.'}
           </p>
           <div className="help-details">
             <p>

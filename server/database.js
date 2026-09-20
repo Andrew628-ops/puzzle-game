@@ -37,6 +37,8 @@ addColumn('users', 'suspension_reason', "TEXT NOT NULL DEFAULT ''");
 addColumn('achievements', 'requirement_type', 'TEXT');
 addColumn('games', 'category', "TEXT NOT NULL DEFAULT 'LOGIC'");
 addColumn('games', 'color', "TEXT NOT NULL DEFAULT 'green'");
+addColumn('game_sessions', 'game', "TEXT NOT NULL DEFAULT 'sliding'");
+addColumn('results', 'game', "TEXT NOT NULL DEFAULT 'sliding'");
 for (const a of ACHIEVEMENTS)
   db.prepare(
     'INSERT OR IGNORE INTO achievements(id,name,description,icon,requirement_value) VALUES(?,?,?,?,?)',
@@ -54,6 +56,12 @@ for (const game of GAME_CATALOG)
     game.color,
   );
 db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)');
+if (!db.prepare('SELECT name FROM schema_migrations WHERE name=?').get('playable-library')) {
+  db.exec(
+    "UPDATE games SET status='available' WHERE slug IN ('memory','sudoku','pattern','word','picture')",
+  );
+  db.prepare('INSERT INTO schema_migrations VALUES(?)').run('playable-library');
+}
 if (!db.prepare('SELECT name FROM schema_migrations WHERE name=?').get('catalog-colors')) {
   for (const game of GAME_CATALOG)
     db.prepare('UPDATE games SET category=?,color=? WHERE slug=?').run(

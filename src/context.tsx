@@ -22,8 +22,11 @@ import type {
   DailyChallenge,
 } from './types';
 const getPage = (): Page => (location.hash.replace('#', '').split('?')[0] || 'home') as Page;
+const getGame = () =>
+  new URLSearchParams(location.hash.split('?')[1] || '').get('game') || 'sliding';
 function useAppState() {
   const [page, setPage] = useState<Page>(getPage),
+    [selectedGame, setSelectedGame] = useState(getGame),
     [player, setPlayer] = useState<Player | null>(null),
     [loaded, setLoaded] = useState(false),
     [guestHistory, setGuestHistory] = useState<GameResult[]>(() => readLocal('pm-history', [])),
@@ -101,6 +104,7 @@ function useAppState() {
   useEffect(() => {
     const navigate = () => {
       setPage(getPage());
+      setSelectedGame(getGame());
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', navigate);
@@ -150,9 +154,11 @@ function useAppState() {
     }
     return earned;
   }, [player, guestHistory, definitions]);
-  function navigate(next: Page) {
-    location.hash = next;
+  function navigate(next: Page, game = 'sliding') {
+    location.hash =
+      next === 'play' && game !== 'sliding' ? `play?game=${encodeURIComponent(game)}` : next;
     setPage(next);
+    setSelectedGame(game);
   }
   function updatePreferences(update: Partial<Preferences>) {
     setPreferences((prev) => ({ ...prev, ...update }));
@@ -190,6 +196,7 @@ function useAppState() {
   }
   return {
     page,
+    selectedGame,
     navigate,
     player,
     setPlayer,

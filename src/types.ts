@@ -14,6 +14,7 @@ export type Page =
   | 'reset-password';
 export interface GameResult {
   id: string;
+  game?: string;
   difficulty: Difficulty;
   seconds: number;
   moves: number;

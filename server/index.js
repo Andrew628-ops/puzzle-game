@@ -5,6 +5,7 @@ import express from 'express';
 import { randomBytes, scryptSync, timingSafeEqual, createHash, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import nodemailer from 'nodemailer';
+import { ARCADE_GAMES, generateArcade, replayArcade, arcadeScore } from '../shared/arcade.js';
 import {
   DIFFICULTIES,
   generatePuzzle,
@@ -297,17 +298,35 @@ app.get('/api/profile/history', requireUser, (req, res) => res.json(historyFor(r
 app.get('/api/achievements', (req, res) => res.json(achievements()));
 app.get('/api/daily-challenge', (req, res) => res.json(dailyChallenge()));
 app.post('/api/games/session', (req, res) => {
+  const game = req.body.game ?? 'sliding';
+  if (!games().some((item) => item.id === game && item.available))
+    return res.status(400).json({ error: 'Choose an available game.' });
+  if (req.body.daily && game !== 'sliding')
+    return res.status(400).json({ error: 'The daily challenge uses Sliding Puzzle.' });
   const daily = req.body.daily ? new Date().toISOString().slice(0, 10) : null;
   const dailyPuzzle = daily ? dailyChallenge(daily) : null;
   const difficulty = dailyPuzzle?.difficulty || req.body.difficulty;
   if (!Object.hasOwn(DIFFICULTIES, difficulty))
     return res.status(400).json({ error: 'Choose a valid difficulty.' });
-  const puzzle = dailyPuzzle || generatePuzzle(difficulty, randomUUID()),
+  const arcade = ARCADE_GAMES.includes(game);
+  const puzzle =
+      dailyPuzzle ||
+      (arcade
+        ? generateArcade(game, difficulty, randomUUID())
+        : generatePuzzle(difficulty, randomUUID())),
     id = randomUUID();
   db.prepare(
-    'INSERT INTO game_sessions(id,user_id,difficulty,board,daily,created) VALUES(?,?,?,?,?,?)',
-  ).run(id, req.user?.id || null, difficulty, JSON.stringify(puzzle.board), daily, Date.now());
-  res.json({ id, difficulty, daily, ...puzzle });
+    'INSERT INTO game_sessions(id,user_id,difficulty,board,daily,created,game) VALUES(?,?,?,?,?,?,?)',
+  ).run(
+    id,
+    req.user?.id || null,
+    difficulty,
+    JSON.stringify(arcade ? puzzle : puzzle.board),
+    daily,
+    Date.now(),
+    game,
+  );
+  res.json({ id, difficulty, daily, game, ...(arcade ? { puzzle } : puzzle) });
 });
 app.post('/api/games/session/complete', (req, res) => {
   const { id, moves, seconds, hints } = req.body;
@@ -328,19 +347,32 @@ app.post('/api/games/session/complete', (req, res) => {
     hints > DIFFICULTIES[game.difficulty].hints
   )
     return res.status(400).json({ error: 'Invalid game result.' });
-  let board = JSON.parse(game.board);
-  for (const tile of moves) {
-    board = moveTile(board, tile);
-    if (!board) return res.status(400).json({ error: 'Invalid move history.' });
+  let moveCount = moves.length,
+    score;
+  if (ARCADE_GAMES.includes(game.game)) {
+    if (hints !== 0) return res.status(400).json({ error: 'Hints are not used in this game.' });
+    const state = replayArcade(JSON.parse(game.board), moves);
+    if (!state) return res.status(400).json({ error: 'Invalid move history.' });
+    if (!state.complete) return res.status(400).json({ error: 'The puzzle is not solved yet.' });
+    moveCount = state.moves;
+    score = arcadeScore(game.difficulty, seconds, state.mistakes);
+  } else {
+    let board = JSON.parse(game.board);
+    for (const tile of moves) {
+      board = moveTile(board, tile);
+      if (!board) return res.status(400).json({ error: 'Invalid move history.' });
+    }
+    if (!isSolved(board)) return res.status(400).json({ error: 'The puzzle is not solved yet.' });
+    score = calculateScore(game.difficulty, seconds, moves.length, hints);
   }
-  if (!isSolved(board)) return res.status(400).json({ error: 'The puzzle is not solved yet.' });
   const result = {
     id,
+    game: game.game,
     difficulty: game.difficulty,
     seconds,
-    moves: moves.length,
+    moves: moveCount,
     hints,
-    score: calculateScore(game.difficulty, seconds, moves.length, hints),
+    score,
     xp: DIFFICULTIES[game.difficulty].xp,
     daily: game.daily,
     date: new Date().toISOString(),
@@ -351,7 +383,9 @@ app.post('/api/games/session/complete', (req, res) => {
     req.user &&
     db.prepare('SELECT id FROM results WHERE user_id=? AND daily=?').get(req.user.id, game.daily);
   if (req.user && !duplicate) {
-    db.prepare('INSERT INTO results VALUES(?,?,?,?,?,?,?,?,?,?)').run(
+    db.prepare(
+      'INSERT INTO results(id,user_id,difficulty,seconds,moves,hints,score,xp,daily,date,game) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+    ).run(
       id,
       req.user.id,
       result.difficulty,
@@ -362,6 +396,7 @@ app.post('/api/games/session/complete', (req, res) => {
       result.xp,
       result.daily,
       result.date,
+      result.game,
     );
     unlockAchievements(req.user.id, historyFor(req.user.id));
   }
