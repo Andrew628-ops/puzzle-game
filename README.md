@@ -105,6 +105,8 @@ The original game browser suite expects the development server to be running. Th
 
 The repository includes `railway.json` for the build, start command, and `/api/health` check. Deploy one service with one persistent volume; the React app and Express API share the same public URL. Railway's free allowance is limited; review [current pricing](https://docs.railway.com/pricing) before choosing a plan.
 
+Keep the Railway build command set to `npm run build`. Railpack installs dependencies in a separate step. Running `npm ci`, removing `node_modules/.vite`, or pruning dependencies in the build command can fail with `EBUSY` because the Vite cache is mounted during that step. Remove any old custom build command from the Railway dashboard or set it to `npm run build`. For a clean lockfile install, set `RAILPACK_NODE_NPM_INSTALL` to `npm ci --include=dev`; for a smaller production image, set `RAILPACK_PRUNE_DEPS` to `true` so Railpack handles pruning separately.
+
 1. Connect your Railway account and deploy this repository as a new service. The local source must be pushed to GitHub first if you choose GitHub deployment.
 2. Attach a [persistent volume](https://docs.railway.com/volumes) at **`/data`** before accepting player registrations. Keep the service at **one replica**.
 3. Set these service variables:
